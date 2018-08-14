@@ -136,6 +136,8 @@ extension AMF0Serializer: AMFSerializer {
             return serialize(value)
         case let value as ASObject:
             return serialize(value)
+        case let value as [Any?]:
+            return serialize(value)
         default:
             return writeUInt8(Type.undefined.rawValue)
         }
@@ -286,6 +288,16 @@ extension AMF0Serializer: AMFSerializer {
      * @see 2.10 ECMA Array Type
      */
     func serialize(_ value: ASArray) -> Self {
+        writeUInt8(Type.ecmaArray.rawValue)
+        writeUInt32(UInt32(value.length))
+        if value.dict.count > 0 {
+            for (key, value) in value.dict {
+                writeUInt16(UInt16(key.count))
+                writeBytes(key.data(using: .utf8)!)
+                serialize(value)
+            }
+        }
+        serializeUTF8("", false).writeUInt8(Type.objectEnd.rawValue)
         return self
     }
 

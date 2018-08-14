@@ -272,7 +272,7 @@ open class RTMPStream: NetStream {
                 videoWasSent = false
                 audioWasSent = false
             case .publishing:
-                send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
+                send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
                 mixer.audioIO.encoder.startRunning()
                 mixer.videoIO.encoder.startRunning()
                 sampler?.startRunning()
@@ -578,6 +578,28 @@ open class RTMPStream: NetStream {
 #endif
         return metadata
     }
+    func arrayMetaData() -> ASArray {
+        var result = ASArray(count: 17)
+        result["width"] = mixer.videoIO.encoder.width
+        result["height"] = mixer.videoIO.encoder.height
+        result["framerate"] = mixer.videoIO.fps
+        result["videocodecid"] = FLVVideoCodec.avc.obsDescription
+        result["videodatarate"] = mixer.videoIO.encoder.bitrate
+        result["duration"] = 0
+        result["fileSize"] = 0
+        result["audiocodecid"] = FLVAudioCodec.aac.obsDescription
+        result["audiodatarate"] = mixer.audioIO.encoder.bitrate
+        result["audiochannels"] = 2
+        result["stereo"] = true
+        result["2.1"] = false
+        result["3.1"] = false
+        result["4.0"] = false
+        result["4.1"] = false
+        result["5.1"] = false
+        result["7.1"] = false
+        
+        return result
+    }
 
     func on(timer: Timer) {
         currentFPS = frameCount
@@ -639,7 +661,7 @@ extension RTMPStream: IEventDispatcher {
 extension RTMPStream: RTMPMuxerDelegate {
     // MARK: RTMPMuxerDelegate
     func metadata(_ metadata: ASObject) {
-        send(handlerName: "@setDataFrame", arguments: "onMetaData", metadata)
+        send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
     }
 
     func sampleOutput(audio buffer: Data, withTimestamp: Double, muxer: RTMPMuxer) {

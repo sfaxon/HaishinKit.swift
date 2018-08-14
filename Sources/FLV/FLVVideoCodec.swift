@@ -27,4 +27,14 @@ public enum FLVVideoCodec: UInt8 {
             return false
         }
     }
+
+    /// value OBS sends with @setDataFrame
+    var obsDescription: String {
+        switch self {
+        case .avc:
+            return "avc1"
+        default:
+            return "unsupported"
+        }
+    }
 }

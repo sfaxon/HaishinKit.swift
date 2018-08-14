@@ -49,4 +49,14 @@ public enum FLVAudioCodec: UInt8 {
             return 1
         }
     }
+
+    /// value OBS sends with @setDataFrame
+    var obsDescription: String {
+        switch self {
+        case .aac:
+            return "mp4a"
+        default:
+            return "unsupported"
+        }
+    }
 }
