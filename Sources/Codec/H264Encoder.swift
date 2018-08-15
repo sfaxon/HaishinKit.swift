@@ -163,7 +163,10 @@ final class H264Encoder: NSObject {
             kVTCompressionPropertyKey_AverageBitRate: Int(bitrate) as NSObject,
             kVTCompressionPropertyKey_ExpectedFrameRate: NSNumber(value: expectedFPS),
             kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration: NSNumber(value: maxKeyFrameIntervalDuration),
-            kVTCompressionPropertyKey_AllowFrameReordering: !isBaseline as NSObject,
+            kVTCompressionPropertyKey_AllowFrameReordering: kCFBooleanFalse, // !isBaseline as NSObject,
+//            kVTCompressionPropertyKey_AllowFrameReordering: !isBaseline as NSObject,
+//            kVTCompressionPropertyKey_FieldCount: NSNumber(value: 1),
+            kVTCompressionPropertyKey_MoreFramesBeforeStart: kCFBooleanTrue,
             kVTCompressionPropertyKey_PixelTransferProperties: [
                 "ScalingMode": scalingMode
             ] as NSObject
@@ -230,6 +233,7 @@ final class H264Encoder: NSObject {
         }
         set {
             if let session: VTCompressionSession = _session {
+//                VTCompressionSessionCompleteFrames(session, kCMTimeInvalid)
                 VTCompressionSessionInvalidate(session)
             }
             _session = newValue

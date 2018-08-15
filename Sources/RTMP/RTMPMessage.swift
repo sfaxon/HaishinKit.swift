@@ -625,7 +625,7 @@ final class RTMPAudioMessage: RTMPMessage {
  7.1.5. Video Message (9)
  */
 final class RTMPVideoMessage: RTMPMessage {
-    private(set) var codec: FLVVideoCodec = .unknown
+    private(set) var codec: FLVVideoCodec = .avc
     private(set) var status: OSStatus = noErr
 
     init() {
