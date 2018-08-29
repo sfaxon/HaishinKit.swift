@@ -347,6 +347,7 @@ final class VideoIOComponent: IOComponent {
 extension VideoIOComponent: AVCaptureVideoDataOutputSampleBufferDelegate {
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate
     func captureOutput(_ captureOutput: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        print("captureOutput: \(CACurrentMediaTime())")
         appendSampleBuffer(sampleBuffer)
     }
 }

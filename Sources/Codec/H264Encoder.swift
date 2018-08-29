@@ -29,7 +29,7 @@ final class H264Encoder: NSObject {
     #if os(iOS)
     static let defaultAttributes: [NSString: AnyObject] = [
         kCVPixelBufferIOSurfacePropertiesKey: [:] as AnyObject,
-        kCVPixelBufferOpenGLESCompatibilityKey: kCFBooleanTrue
+//        kCVPixelBufferOpenGLESCompatibilityKey: kCFBooleanTrue
     ]
     #else
     static let defaultAttributes: [NSString: AnyObject] = [
@@ -38,6 +38,8 @@ final class H264Encoder: NSObject {
     ]
     #endif
     static let defaultDataRateLimits: [Int] = [0, 0]
+    
+    var frameCount = Int(0)
 
     @objc var muted: Bool = false
     @objc var scalingMode: String = H264Encoder.defaultScalingMode {
@@ -94,7 +96,7 @@ final class H264Encoder: NSObject {
             setProperty(kVTCompressionPropertyKey_DataRateLimits, dataRateLimits as CFTypeRef)
         }
     }
-    @objc var profileLevel: String = kVTProfileLevel_H264_Baseline_3_1 as String {
+    @objc var profileLevel: String = kVTProfileLevel_H264_Main_AutoLevel as String {
         didSet {
             guard profileLevel != oldValue else {
                 return
@@ -146,48 +148,51 @@ final class H264Encoder: NSObject {
     }
     private(set) var status: OSStatus = noErr
     private var attributes: [NSString: AnyObject] {
-        var attributes: [NSString: AnyObject] = H264Encoder.defaultAttributes
+        var attributes: [NSString: AnyObject] = [:] // H264Encoder.defaultAttributes
         attributes[kCVPixelBufferWidthKey] = NSNumber(value: width)
         attributes[kCVPixelBufferHeightKey] = NSNumber(value: height)
+        attributes[kCVPixelBufferPixelFormatTypeKey] = NSNumber(value: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) // NSNumber(value: 875704438)
         return attributes
     }
     private var invalidateSession: Bool = true
     private var lastImageBuffer: CVImageBuffer?
 
     // @see: https: //developer.apple.com/library/mac/releasenotes/General/APIDiffsMacOSX10_8/VideoToolbox.html
-    private var properties: [NSString: NSObject] {
-        let isBaseline: Bool = profileLevel.contains("Baseline")
-        var properties: [NSString: NSObject] = [
-            kVTCompressionPropertyKey_RealTime: kCFBooleanTrue,
-            kVTCompressionPropertyKey_ProfileLevel: profileLevel as NSObject,
-            kVTCompressionPropertyKey_AverageBitRate: Int(bitrate) as NSObject,
-            kVTCompressionPropertyKey_ExpectedFrameRate: NSNumber(value: expectedFPS),
-            kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration: NSNumber(value: maxKeyFrameIntervalDuration),
-            kVTCompressionPropertyKey_AllowFrameReordering: kCFBooleanFalse, // !isBaseline as NSObject,
-//            kVTCompressionPropertyKey_AllowFrameReordering: !isBaseline as NSObject,
-//            kVTCompressionPropertyKey_FieldCount: NSNumber(value: 1),
-            kVTCompressionPropertyKey_MoreFramesBeforeStart: kCFBooleanTrue,
-            kVTCompressionPropertyKey_PixelTransferProperties: [
-                "ScalingMode": scalingMode
-            ] as NSObject
-        ]
-
-#if os(OSX)
-        if enabledHardwareEncoder {
-            properties[kVTVideoEncoderSpecification_EncoderID] = "com.apple.videotoolbox.videoencoder.h264.gva" as NSObject
-            properties["EnableHardwareAcceleratedVideoEncoder"] = kCFBooleanTrue
-            properties["RequireHardwareAcceleratedVideoEncoder"] = kCFBooleanTrue
-        }
-#endif
-
-        if dataRateLimits != H264Encoder.defaultDataRateLimits {
-            properties[kVTCompressionPropertyKey_DataRateLimits] = dataRateLimits as NSObject
-        }
-        if !isBaseline {
-            properties[kVTCompressionPropertyKey_H264EntropyMode] = kVTH264EntropyMode_CABAC
-        }
-        return properties
-    }
+//    private var properties: [NSString: NSObject] {
+//        let isBaseline: Bool = profileLevel.contains("Baseline")
+//        var properties: [NSString: NSObject] = [
+//            kVTCompressionPropertyKey_RealTime: kCFBooleanTrue,
+////            kVTCompressionPropertyKey_ProfileLevel: profileLevel,
+//            kVTCompressionPropertyKey_AverageBitRate: Int(bitrate) as NSObject,
+//            kVTCompressionPropertyKey_ExpectedFrameRate: NSNumber(value: expectedFPS),
+//            kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration: NSNumber(value: maxKeyFrameIntervalDuration),
+//            kVTCompressionPropertyKey_MaxKeyFrameInterval: NSNumber(value: maxKeyFrameIntervalDuration),
+//            kVTCompressionPropertyKey_AllowFrameReordering: kCFBooleanTrue, // !isBaseline as NSObject,
+////            kVTCompressionPropertyKey_AllowFrameReordering: !isBaseline as NSObject,
+////            kVTCompressionPropertyKey_FieldCount: NSNumber(value: 1),
+////            kVTCompressionPropertyKey_MoreFramesBeforeStart: kCFBooleanTrue
+////            kVTCompressionPropertyKey_PixelTransferProperties: [
+////                "ScalingMode": scalingMode
+////            ] as NSObject
+//        ]
+//
+//#if os(OSX)
+//        if enabledHardwareEncoder {
+//            properties[kVTVideoEncoderSpecification_EncoderID] = "com.apple.videotoolbox.videoencoder.h264.gva" as NSObject
+//            properties["EnableHardwareAcceleratedVideoEncoder"] = kCFBooleanTrue
+//            properties["RequireHardwareAcceleratedVideoEncoder"] = kCFBooleanTrue
+//        }
+//#endif
+//
+////        if dataRateLimits != H264Encoder.defaultDataRateLimits {
+////            properties[kVTCompressionPropertyKey_DataRateLimits] = dataRateLimits as NSObject
+////        }
+////        properties[kVTCompressionPropertyKey_DataRateLimits] = NSArray(array: [Double(bitrate) * 1.5/8, 1])
+//////        if !isBaseline {
+////            properties[kVTCompressionPropertyKey_H264EntropyMode] = kVTH264EntropyMode_CABAC
+//////        }
+//        return properties
+//    }
 
     private var callback: VTCompressionOutputCallback = {(
         outputCallbackRefCon: UnsafeMutableRawPointer?,
@@ -204,6 +209,15 @@ final class H264Encoder: NSObject {
         encoder.formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer)
         encoder.delegate?.sampleOutput(video: sampleBuffer)
     }
+    
+    private var encoderSpec: CFDictionary {
+        var spec: [NSString: AnyObject] = [:]
+        spec[kVTVideoEncoderSpecification_EncoderID] = "com.apple.videotoolbox.videoencoder.h264" as AnyObject
+        // mac os only?
+//        spec[kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder] = kCFBooleanTrue
+//        spec[kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder] = kCFBooleanFalse
+        return spec as CFDictionary
+    }
 
     private var _session: VTCompressionSession?
     private var session: VTCompressionSession? {
@@ -214,7 +228,7 @@ final class H264Encoder: NSObject {
                     width,
                     height,
                     kCMVideoCodecType_H264,
-                    nil,
+                    encoderSpec,
                     attributes as CFDictionary?,
                     nil,
                     callback,
@@ -225,15 +239,66 @@ final class H264Encoder: NSObject {
                     return nil
                 }
                 invalidateSession = false
-                status = VTSessionSetProperties(_session!, properties as CFDictionary)
-                status = VTCompressionSessionPrepareToEncodeFrames(_session!)
-                supportedProperty = _session?.copySupportedPropertyDictionary()
+//                VTCompressionSessionCreate(<#T##allocator: CFAllocator?##CFAllocator?#>,
+//                                           <#T##width: Int32##Int32#>,
+//                                           <#T##height: Int32##Int32#>,
+//                                           <#T##codecType: CMVideoCodecType##CMVideoCodecType#>,
+//                                           <#T##encoderSpecification: CFDictionary?##CFDictionary?#>,
+//                                           <#T##sourceImageBufferAttributes: CFDictionary?##CFDictionary?#>,
+//                                           <#T##compressedDataAllocator: CFAllocator?##CFAllocator?#>,
+//                                           <#T##outputCallback: VTCompressionOutputCallback?##VTCompressionOutputCallback?##(UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, OSStatus, VTEncodeInfoFlags, CMSampleBuffer?) -> Void#>,
+//                                           <#T##outputCallbackRefCon: UnsafeMutableRawPointer?##UnsafeMutableRawPointer?#>,
+//                                           <#T##compressionSessionOut: UnsafeMutablePointer<VTCompressionSession?>##UnsafeMutablePointer<VTCompressionSession?>#>)
+
+//                guard VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Baseline_3_1) == noErr else {
+//                    fatalError()
+//                }
+//                var result: NSObject? = nil
+//                guard VTSessionCopyProperty(_session!, kVTCompressionPropertyKey_ProfileLevel, kCFAllocatorDefault, &result) == noErr else {
+//                    fatalError()
+//                }
+//                print("profileLevel: value: \(String(describing: result))")
+//
+//                status = VTCompressionSessionPrepareToEncodeFrames(_session!)
+//                supportedProperty = _session?.copySupportedPropertyDictionary()
+
+//                status = VTSessionSetProperties(_session!, properties as CFDictionary)
+//                var support: CFDictionary? = nil
+//                guard VTSessionCopySupportedPropertyDictionary(_session!, &support) == noErr else {
+//                    fatalError()
+//                }
+
+//                for (key, _) in properties {
+//                    var result: NSObject? = nil
+//                    VTSessionCopyProperty(_session!, key as CFString, kCFAllocatorDefault, &result)
+//                    print("key: \(key), value: \(String(describing: result))")
+//                }
+
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, NSInteger(2) as CFTypeRef)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_MaxKeyFrameInterval, NSInteger(60) as CFTypeRef)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ExpectedFrameRate, NSInteger(30) as CFTypeRef)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_AutoLevel)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(4000000) as CFTypeRef)
+//                NSArray *limit = @[@(_configuration.videoBitRate * 1.5/8), @(1)];
+                let limit: NSArray = NSArray(array: [NSInteger(468750), NSNumber(floatLiteral: 1.5)])
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_DataRateLimits, limit as CFArray)
+                
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ColorPrimaries, kCVImageBufferColorPrimaries_ITU_R_709_2)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_TransferFunction, kCVImageBufferTransferFunction_ITU_R_709_2)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_YCbCrMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2)
+                
+                
+                //VTSessionSetProperty(_session!, kVTCompressionPropertyKey_H264EntropyMode, kVTH264EntropyMode_CABAC)
+
+                VTCompressionSessionPrepareToEncodeFrames(_session!)
             }
             return _session
         }
         set {
             if let session: VTCompressionSession = _session {
-//                VTCompressionSessionCompleteFrames(session, kCMTimeInvalid)
+                VTCompressionSessionCompleteFrames(session, kCMTimeInvalid)
                 VTCompressionSessionInvalidate(session)
             }
             _session = newValue
@@ -250,32 +315,66 @@ final class H264Encoder: NSObject {
         guard let session: VTCompressionSession = session else {
             return
         }
+
+        let d = CMTime(value: 1, timescale: 30)
+        let p = CMTimeMultiply(d, Int32(self.frameCount))
+
+        var x = imageBuffer
         var flags: VTEncodeInfoFlags = []
+
+        var frameProperties: [NSString: Any] = [:]
+        if self.frameCount % 60 == 0 {
+            frameProperties[kVTEncodeFrameOptionKey_ForceKeyFrame] = kCFBooleanTrue
+        }
+
         VTCompressionSessionEncodeFrame(
             session,
-            muted ? lastImageBuffer ?? imageBuffer : imageBuffer,
-            presentationTimeStamp,
-            duration,
-            nil,
-            nil,
+            imageBuffer, //muted ? lastImageBuffer ?? imageBuffer : imageBuffer,
+            p,
+            d,
+            frameProperties as CFDictionary,
+            &x,
             &flags
         )
+//        VTCompressionSessionEncodeFrame(<#T##session: VTCompressionSession##VTCompressionSession#>,
+//                                        <#T##imageBuffer: CVImageBuffer##CVImageBuffer#>,
+//                                        <#T##presentationTimeStamp: CMTime##CMTime#>,
+//                                        <#T##duration: CMTime##CMTime#>,
+//                                        <#T##frameProperties: CFDictionary?##CFDictionary?#>,
+//                                        <#T##sourceFrameRefCon: UnsafeMutableRawPointer?##UnsafeMutableRawPointer?#>,
+//                                        <#T##infoFlagsOut: UnsafeMutablePointer<VTEncodeInfoFlags>?##UnsafeMutablePointer<VTEncodeInfoFlags>?#>)
+
+//        let presentTime = CMTimeMake(Int64(frameCount), 30)
+//        let dur = CMTimeMake(1, 30)
+
+//        var now = NSNumber(value: CACurrentMediaTime()*1000)
+
+//        VTCompressionSessionEncodeFrame(
+//            session,
+//            imageBuffer, //muted ? lastImageBuffer ?? imageBuffer : imageBuffer,
+//            presentTime,
+//            dur,
+//            nil, // properties as CFDictionary,
+//            &now,
+//            &flags
+//        )
+        self.frameCount += 1
         if !muted {
             lastImageBuffer = imageBuffer
         }
     }
 
     private func setProperty(_ key: CFString, _ value: CFTypeRef?) {
-        lockQueue.async {
-            guard let session: VTCompressionSession = self._session else {
-                return
-            }
-            self.status = VTSessionSetProperty(
-                session,
-                key,
-                value
-            )
-        }
+//        lockQueue.async {
+//            guard let session: VTCompressionSession = self._session else {
+//                return
+//            }
+//            self.status = VTSessionSetProperty(
+//                session,
+//                key,
+//                value
+//            )
+//        }
     }
 
 #if os(iOS)

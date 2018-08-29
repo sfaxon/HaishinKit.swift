@@ -12,11 +12,13 @@ final class RTMPMuxer {
 
     weak var delegate: RTMPMuxerDelegate?
     private var frameCount: Int = 0
+    private var aggregatedCompositionTime = Int(0)
 //    private var compositionTime: Int32 = 0
     private var configs: [Int: Data] = [:]
     private var audioTimestamp: CMTime = kCMTimeZero
     private var videoTimestamp: CMTime = kCMTimeZero
     private var initalVideoTimestamp: CMTime = kCMTimeZero
+    private var initalCurrentMediaTime = CACurrentMediaTime()
 
     func dispose() {
         configs.removeAll()
@@ -84,24 +86,31 @@ extension RTMPMuxer: VideoEncoderDelegate {
 //        compositionTime += Int32(delta) // Int32(delta)
         let compositionTime = Int32(delta)
 
-        var newTiming = [CMSampleTimingInfo](repeating: CMSampleTimingInfo(duration: kCMTimeZero,
-                                                                           presentationTimeStamp: kCMTimeZero,
-                                                                           decodeTimeStamp: kCMTimeZero),
-                                             count: sampleBuffer.sampleTimingInfo.count)
+//        var newTiming = [CMSampleTimingInfo](repeating: CMSampleTimingInfo(duration: kCMTimeZero,
+//                                                                           presentationTimeStamp: kCMTimeZero,
+//                                                                           decodeTimeStamp: kCMTimeZero),
+//                                             count: sampleBuffer.sampleTimingInfo.count)
 
-        for i in 0..<sampleBuffer.sampleTimingInfo.count {
-            newTiming[i].decodeTimeStamp = decodeTimeStamp
-            newTiming[i].presentationTimeStamp = presentationTimeStamp
-            newTiming[i].duration = CMTime(seconds: delta / 1000, preferredTimescale: 1000000)
-        }
-
-        var out: CMSampleBuffer?
-        CMSampleBufferCreateCopyWithNewTiming(nil, sampleBuffer, newTiming.count, &newTiming, &out)
+//        for i in 0..<sampleBuffer.sampleTimingInfo.count {
+//            newTiming[i].decodeTimeStamp = decodeTimeStamp
+//            newTiming[i].presentationTimeStamp = presentationTimeStamp
+//            newTiming[i].duration = CMTime(seconds: delta / 1000, preferredTimescale: 1000000)
+//        }
+//
+//        var out: CMSampleBuffer?
+//        CMSampleBufferCreateCopyWithNewTiming(nil, sampleBuffer, newTiming.count, &newTiming, &out)
 
         guard let data = sampleBuffer.dataBuffer?.data, 0 <= delta else {
             return
         }
-        
+
+        if keyframe {
+            let timeDelta = CACurrentMediaTime() - initalCurrentMediaTime
+            print("RTMPMuxer.sampleOutput sending keyframe with aggregatedCompositionTime: \(timeDelta)")
+        }
+
+        aggregatedCompositionTime += Int(compositionTime)
+
         var buffer = Data([((keyframe ? FLVFrameType.key.rawValue : FLVFrameType.inter.rawValue) << 4) | FLVVideoCodec.avc.rawValue, FLVAVCPacketType.nal.rawValue])
         buffer.append(contentsOf: compositionTime.bigEndian.data[1..<4])
         buffer.append(data)
@@ -118,7 +127,7 @@ extension RTMPMuxer: MP4SamplerDelegate {
         if let avc1: MP4VisualSampleEntryBox = reader.getBoxes(byName: "avc1").first as? MP4VisualSampleEntryBox {
             metadata["width"] = avc1.width
             metadata["height"] = avc1.height
-            metadata["videocodecid"] = FLVVideoCodec.avc.rawValue
+            metadata["videocodecid"] = FLVVideoCodec.avc.obsDescription
         }
         if let _: MP4AudioSampleEntryBox = reader.getBoxes(byName: "mp4a").first as? MP4AudioSampleEntryBox {
             metadata["audiocodecid"] = FLVAudioCodec.aac.rawValue

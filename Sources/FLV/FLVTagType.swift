@@ -11,6 +11,10 @@ public enum FLVTagType: UInt8 {
             return 0
         }
     }
+    
+    var chunkStreamId: UInt16 {
+        return 4
+    }
 
     var headerSize: Int {
         switch self {

@@ -636,10 +636,12 @@ final class RTMPVideoMessage: RTMPMessage {
         super.init(type: .video)
         self.streamId = streamId
         self.timestamp = timestamp
+        print("RTMVideoMessage.timestamp: \(timestamp)")
         self.payload = payload
     }
 
     override func execute(_ connection: RTMPConnection) {
+        fatalError("execute isn't actually called")
         guard let stream: RTMPStream = connection.streams[streamId] else {
             return
         }
@@ -658,6 +660,7 @@ final class RTMPVideoMessage: RTMPMessage {
     }
 
     func enqueueSampleBuffer(_ stream: RTMPStream) {
+        fatalError("RTMPVideoMessage.enqueueSampleBuffer")
         stream.videoTimestamp += Double(timestamp)
 
         let compositionTimeoffset: Int32 = Int32(data: [0] + payload[2..<5]).bigEndian
@@ -686,6 +689,7 @@ final class RTMPVideoMessage: RTMPMessage {
     }
 
     func createFormatDescription(_ stream: RTMPStream) -> OSStatus {
+        fatalError("RTMPVideoMessage.createFormatDescription")
         var config: AVCConfigurationRecord = AVCConfigurationRecord()
         config.data = payload.subdata(in: FLVTagType.video.headerSize..<payload.count)
         return config.createFormatDescription(&stream.mixer.videoIO.formatDescription)

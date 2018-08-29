@@ -56,10 +56,10 @@ final class LiveViewController: UIViewController {
         rtmpStream.videoSettings = [
             "width": 1280,
             "height": 720,
-            "profileLevel": kVTProfileLevel_H264_Baseline_3_1,
+            "profileLevel": kVTProfileLevel_H264_Main_AutoLevel,
             "maxKeyFrameIntervalDuration": 3,
             //
-            "bitrate": 300 * 1024
+            "bitrate": 4000000 // 300 * 1024
         ]
         rtmpStream.audioSettings = [
             "muted": true,

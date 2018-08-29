@@ -272,7 +272,7 @@ open class RTMPStream: NetStream {
                 videoWasSent = false
                 audioWasSent = false
             case .publishing:
-                send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
+                send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
                 mixer.audioIO.encoder.startRunning()
                 mixer.videoIO.encoder.startRunning()
                 sampler?.startRunning()
@@ -566,10 +566,12 @@ open class RTMPStream: NetStream {
         if let _: AVCaptureInput = mixer.videoIO.input {
             metadata["width"] = mixer.videoIO.encoder.width
             metadata["height"] = mixer.videoIO.encoder.height
-            metadata["framerate"] = mixer.videoIO.fps
-            metadata["videocodecid"] = FLVVideoCodec.avc.rawValue
+            metadata["framerate"] = 30 // mixer.videoIO.fps
+            metadata["videocodecid"] = FLVVideoCodec.avc.obsDescription
             metadata["videodatarate"] = mixer.videoIO.encoder.bitrate
             metadata["duration"] = 0
+            metadata["fileSize"] = 0
+            metadata["encoder"] = "AVLive 1.0.0"
         }
         if let _: AVCaptureInput = mixer.audioIO.input {
             metadata["audiocodecid"] = FLVAudioCodec.aac.rawValue
@@ -597,11 +599,12 @@ open class RTMPStream: NetStream {
         result["4.1"] = false
         result["5.1"] = false
         result["7.1"] = false
-        
+
         return result
     }
 
     func on(timer: Timer) {
+        print("RTMStream.on(timer:) run at \(CACurrentMediaTime())")
         currentFPS = frameCount
         frameCount = 0
         info.on(timer: timer)
@@ -661,7 +664,7 @@ extension RTMPStream: IEventDispatcher {
 extension RTMPStream: RTMPMuxerDelegate {
     // MARK: RTMPMuxerDelegate
     func metadata(_ metadata: ASObject) {
-        send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
+        send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
     }
 
     func sampleOutput(audio buffer: Data, withTimestamp: Double, muxer: RTMPMuxer) {
@@ -671,7 +674,7 @@ extension RTMPStream: RTMPMuxerDelegate {
         let type: FLVTagType = .audio
         let length: Int = rtmpConnection.socket.doOutput(chunk: RTMPChunk(
             type: audioWasSent ? .one : .zero,
-            streamId: type.streamId,
+            streamId: type.chunkStreamId, // type.streamId, Wireshark reports this as the Chunk Stream ID
             message: RTMPAudioMessage(streamId: id, timestamp: UInt32(audioTimestamp), payload: buffer)
         ), locked: nil)
         audioWasSent = true
@@ -687,12 +690,13 @@ extension RTMPStream: RTMPMuxerDelegate {
         OSAtomicOr32Barrier(1, &mixer.videoIO.encoder.locked)
         let length: Int = rtmpConnection.socket.doOutput(chunk: RTMPChunk(
             type: videoWasSent ? .one : .zero,
-            streamId: type.streamId,
+            streamId: type.chunkStreamId, // Wireshark reports this as the Chunk Stream ID, it used to match
             message: RTMPVideoMessage(streamId: id, timestamp: UInt32(videoTimestamp), payload: buffer)
         ), locked: &mixer.videoIO.encoder.locked)
         videoWasSent = true
         OSAtomicAdd64(Int64(length), &info.byteCount)
         videoTimestamp = withTimestamp + (videoTimestamp - floor(videoTimestamp))
+        print("videoTimestamp: \(videoTimestamp)")
         frameCount += 1
     }
 }

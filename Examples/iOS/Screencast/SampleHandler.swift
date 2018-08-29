@@ -23,6 +23,7 @@ open class SampleHandler: RPBroadcastSampleHandler {
         logger.level = .debug
         logger.appender = socket
         */
+        
         print("broadcastStarted")
         super.broadcastStarted(withSetupInfo: setupInfo)
         guard
@@ -42,7 +43,7 @@ open class SampleHandler: RPBroadcastSampleHandler {
                 broadcaster.stream.videoSettings = [
                     "width": dimensions.width,
                     "height": dimensions.height ,
-                    "profileLevel": kVTProfileLevel_H264_Baseline_AutoLevel
+                    "profileLevel": kVTProfileLevel_H264_Main_AutoLevel
                 ]
             }
             broadcaster.appendSampleBuffer(sampleBuffer, withType: .video)
