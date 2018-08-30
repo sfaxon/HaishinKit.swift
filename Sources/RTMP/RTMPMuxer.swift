@@ -101,6 +101,7 @@ extension RTMPMuxer: VideoEncoderDelegate {
 //        CMSampleBufferCreateCopyWithNewTiming(nil, sampleBuffer, newTiming.count, &newTiming, &out)
 
         guard let data = sampleBuffer.dataBuffer?.data, 0 <= delta else {
+            print("RTMPMuxer.sampleOutput bailing because delta < 0")
             return
         }
 
@@ -114,9 +115,10 @@ extension RTMPMuxer: VideoEncoderDelegate {
         var buffer = Data([((keyframe ? FLVFrameType.key.rawValue : FLVFrameType.inter.rawValue) << 4) | FLVVideoCodec.avc.rawValue, FLVAVCPacketType.nal.rawValue])
         buffer.append(contentsOf: compositionTime.bigEndian.data[1..<4])
         buffer.append(data)
-        delegate?.sampleOutput(video: buffer, withTimestamp: delta, muxer: self)
         videoTimestamp = decodeTimeStamp
+        print("RTMPMuxer   frameCount: \(frameCount)")
         self.frameCount += 1
+        delegate?.sampleOutput(video: buffer, withTimestamp: delta, muxer: self)
     }
 }
 

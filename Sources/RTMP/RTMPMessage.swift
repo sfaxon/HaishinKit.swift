@@ -636,7 +636,7 @@ final class RTMPVideoMessage: RTMPMessage {
         super.init(type: .video)
         self.streamId = streamId
         self.timestamp = timestamp
-        print("RTMVideoMessage.timestamp: \(timestamp)")
+//        print("RTMVideoMessage.timestamp: \(timestamp)")
         self.payload = payload
     }
 

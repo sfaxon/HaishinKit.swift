@@ -293,6 +293,7 @@ final class VideoIOComponent: IOComponent {
 
     func appendSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
         guard var buffer: CVImageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            print("VideoIOComponent bailing because it couldn't get buffer")
             return
         }
         CVPixelBufferLockBaseAddress(buffer, .readOnly)
@@ -347,7 +348,7 @@ final class VideoIOComponent: IOComponent {
 extension VideoIOComponent: AVCaptureVideoDataOutputSampleBufferDelegate {
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate
     func captureOutput(_ captureOutput: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        print("captureOutput: \(CACurrentMediaTime())")
+//        print("captureOutput: \(CACurrentMediaTime())")
         appendSampleBuffer(sampleBuffer)
     }
 }

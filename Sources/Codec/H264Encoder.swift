@@ -38,7 +38,7 @@ final class H264Encoder: NSObject {
     ]
     #endif
     static let defaultDataRateLimits: [Int] = [0, 0]
-    
+
     var frameCount = Int(0)
 
     @objc var muted: Bool = false
@@ -194,22 +194,53 @@ final class H264Encoder: NSObject {
 //        return properties
 //    }
 
+    public var pixelBufferPoolAttributes: [NSString: NSObject] {
+        var attributes: [NSString: NSObject] = [:]
+        attributes[kCVPixelBufferWidthKey] = NSNumber(value: Float(width))
+        attributes[kCVPixelBufferHeightKey] = NSNumber(value: Float(height))
+        attributes[kCVPixelBufferBytesPerRowAlignmentKey] = NSNumber(value: Float(width * 4))
+        attributes[kCVPixelBufferPoolMinimumBufferCountKey] = NSNumber(value: Int(12))
+        return attributes
+    }
+    private var _pixelBufferPool: CVPixelBufferPool?
+    private var pixelBufferPool: CVPixelBufferPool! {
+        get {
+            if _pixelBufferPool == nil {
+                var pixelBufferPool: CVPixelBufferPool?
+                CVPixelBufferPoolCreate(nil, nil, pixelBufferPoolAttributes as CFDictionary?, &pixelBufferPool)
+                _pixelBufferPool = pixelBufferPool
+            }
+            return _pixelBufferPool!
+        }
+        set {
+            _pixelBufferPool = newValue
+        }
+    }
+
     private var callback: VTCompressionOutputCallback = {(
         outputCallbackRefCon: UnsafeMutableRawPointer?,
         sourceFrameRefCon: UnsafeMutableRawPointer?,
         status: OSStatus,
         infoFlags: VTEncodeInfoFlags,
         sampleBuffer: CMSampleBuffer?) in
-        guard
-            let refcon: UnsafeMutableRawPointer = outputCallbackRefCon,
-            let sampleBuffer: CMSampleBuffer = sampleBuffer, status == noErr else {
+        if status != noErr {
+            print("H264Encoder.callabck bailing because status was error: \(status)")
+            return
+        }
+        guard let refcon: UnsafeMutableRawPointer = outputCallbackRefCon else {
+            print("H264Encoder.callback bailing because refcon was nil")
+            return
+        }
+        guard let sampleBuffer: CMSampleBuffer = sampleBuffer else {
+            print("H264Encoder.callback bailing because sampleBuffer was nil")
             return
         }
         let encoder: H264Encoder = Unmanaged<H264Encoder>.fromOpaque(refcon).takeUnretainedValue()
         encoder.formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer)
         encoder.delegate?.sampleOutput(video: sampleBuffer)
+//        CVPixelBufferUnlockBaseAddress(sampleBuffer as! CVBuffer, [])
     }
-    
+
     private var encoderSpec: CFDictionary {
         var spec: [NSString: AnyObject] = [:]
         spec[kVTVideoEncoderSpecification_EncoderID] = "com.apple.videotoolbox.videoencoder.h264" as AnyObject
@@ -280,16 +311,17 @@ final class H264Encoder: NSObject {
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse)
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue)
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_AutoLevel)
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(4000000) as CFTypeRef)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(1200000) as CFTypeRef)
 //                NSArray *limit = @[@(_configuration.videoBitRate * 1.5/8), @(1)];
                 let limit: NSArray = NSArray(array: [NSInteger(468750), NSNumber(floatLiteral: 1.5)])
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_DataRateLimits, limit as CFArray)
-                
+
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ColorPrimaries, kCVImageBufferColorPrimaries_ITU_R_709_2)
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_TransferFunction, kCVImageBufferTransferFunction_ITU_R_709_2)
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_YCbCrMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2)
-                
-                
+
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_VideoEncoderPixelBufferAttributes, pixelBufferPoolAttributes as CFDictionary)
+
                 //VTSessionSetProperty(_session!, kVTCompressionPropertyKey_H264EntropyMode, kVTH264EntropyMode_CABAC)
 
                 VTCompressionSessionPrepareToEncodeFrames(_session!)
@@ -306,13 +338,19 @@ final class H264Encoder: NSObject {
     }
 
     func encodeImageBuffer(_ imageBuffer: CVImageBuffer, presentationTimeStamp: CMTime, duration: CMTime) {
-        guard running && locked == 0 else {
+        guard running else {
+            print("H264Encoder bailing because not running")
+            return
+        }
+        guard locked == 0 else {
+            print("H264Encoder bailing because locked")
             return
         }
         if invalidateSession {
             session = nil
         }
         guard let session: VTCompressionSession = session else {
+            print("H264Encoder bailing because there is no session")
             return
         }
 
@@ -327,6 +365,14 @@ final class H264Encoder: NSObject {
             frameProperties[kVTEncodeFrameOptionKey_ForceKeyFrame] = kCFBooleanTrue
         }
 
+        print("VTCompressionSessionEncodeFrame.pts: \(CMTimeGetSeconds(p))")
+        print("VTCompressionSessionEncodeFrame.dts: \(CMTimeGetSeconds(d))")
+
+
+        if session.numberOfPendingFrames.intValue > 0 {
+            print("pending number of frames is > 0: \(session.numberOfPendingFrames)")
+        }
+
         VTCompressionSessionEncodeFrame(
             session,
             imageBuffer, //muted ? lastImageBuffer ?? imageBuffer : imageBuffer,
@@ -336,6 +382,10 @@ final class H264Encoder: NSObject {
             &x,
             &flags
         )
+
+        if flags.contains(VTEncodeInfoFlags.frameDropped) {
+            print("VTCompressionSessionEncodeFrame reported bailing because it dropped a frame")
+        }
 //        VTCompressionSessionEncodeFrame(<#T##session: VTCompressionSession##VTCompressionSession#>,
 //                                        <#T##imageBuffer: CVImageBuffer##CVImageBuffer#>,
 //                                        <#T##presentationTimeStamp: CMTime##CMTime#>,
@@ -358,6 +408,7 @@ final class H264Encoder: NSObject {
 //            &now,
 //            &flags
 //        )
+        print("H264Encoder frameCount: \(frameCount)")
         self.frameCount += 1
         if !muted {
             lastImageBuffer = imageBuffer
@@ -429,6 +480,7 @@ extension H264Encoder: Running {
             NotificationCenter.default.removeObserver(self)
 #endif
             self.running = false
+            self.frameCount = 0
         }
     }
 }

@@ -684,9 +684,13 @@ extension RTMPStream: RTMPMuxerDelegate {
 
     func sampleOutput(video buffer: Data, withTimestamp: Double, muxer: RTMPMuxer) {
         guard readyState == .publishing else {
+            print("RTMPStream bailing because not publishing")
             return
         }
         let type: FLVTagType = .video
+        if mixer.videoIO.encoder.locked != 0 {
+            print("RTMPStream bailing? - encoder locked")
+        }
         OSAtomicOr32Barrier(1, &mixer.videoIO.encoder.locked)
         let length: Int = rtmpConnection.socket.doOutput(chunk: RTMPChunk(
             type: videoWasSent ? .one : .zero,
@@ -696,7 +700,8 @@ extension RTMPStream: RTMPMuxerDelegate {
         videoWasSent = true
         OSAtomicAdd64(Int64(length), &info.byteCount)
         videoTimestamp = withTimestamp + (videoTimestamp - floor(videoTimestamp))
-        print("videoTimestamp: \(videoTimestamp)")
+//        print("videoTimestamp: \(videoTimestamp)")
+        print("RTMPStream  frameCount: \(frameCount)")
         frameCount += 1
     }
 }

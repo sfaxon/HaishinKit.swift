@@ -210,9 +210,17 @@ extension NetSocket: StreamDelegate {
             break
         //  8 = 1 << 3
         case .errorOccurred:
+            if aStream == inputStream {
+                print("inputStream network error occured")
+            } else if aStream == outputStream {
+                print("outputStream network error occured")
+            } else {
+                print("some weird network error occured")
+            }
             close(isDisconnected: true)
         // 16 = 1 << 4
         case .endEncountered:
+            print("sombody things the end is nigh")
             close(isDisconnected: true)
         default:
             break
