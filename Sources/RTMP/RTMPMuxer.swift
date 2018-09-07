@@ -118,7 +118,7 @@ extension RTMPMuxer: VideoEncoderDelegate {
         videoTimestamp = decodeTimeStamp
         print("RTMPMuxer   frameCount: \(frameCount)")
         self.frameCount += 1
-        delegate?.sampleOutput(video: buffer, withTimestamp: delta, muxer: self)
+        delegate?.sampleOutput(video: buffer, withTimestamp: sampleBuffer.presentationTimeStamp.seconds * 1000, muxer: self)
     }
 }
 

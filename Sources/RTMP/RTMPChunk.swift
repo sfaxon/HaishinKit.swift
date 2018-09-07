@@ -101,6 +101,10 @@ final class RTMPChunk {
             }
 
             _data.append(type.toBasicHeader(streamId))
+            
+            if let message = message as? RTMPVideoMessage {
+                print("sending RTMPVideoMessage with timestamp: \(message.timestamp)")
+            }
 
             if RTMPChunk.maxTimestamp < message.timestamp {
                 _data.append(contentsOf: [0xFF, 0xFF, 0xFF])

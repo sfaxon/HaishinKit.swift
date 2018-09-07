@@ -59,7 +59,7 @@ final class LiveViewController: UIViewController {
             "profileLevel": kVTProfileLevel_H264_Main_AutoLevel,
             "maxKeyFrameIntervalDuration": 3,
             //
-            "bitrate": 4000000 // 300 * 1024
+            "bitrate": 1200000 // 4000000 // 300 * 1024
         ]
         rtmpStream.audioSettings = [
             "muted": true,

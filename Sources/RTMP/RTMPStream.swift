@@ -273,7 +273,7 @@ open class RTMPStream: NetStream {
                 videoWasSent = false
                 audioWasSent = false
             case .publishing:
-                send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
+                send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
                 mixer.audioIO.encoder.startRunning()
                 mixer.videoIO.encoder.startRunning()
                 sampler?.startRunning()
@@ -565,13 +565,13 @@ open class RTMPStream: NetStream {
         metadata.removeAll()
 #if os(iOS) || os(macOS)
         if let _: AVCaptureInput = mixer.videoIO.input {
-            metadata["width"] = mixer.videoIO.encoder.width
-            metadata["height"] = mixer.videoIO.encoder.height
-            metadata["framerate"] = 30 // mixer.videoIO.fps
-            metadata["videocodecid"] = FLVVideoCodec.avc.obsDescription
-            metadata["videodatarate"] = mixer.videoIO.encoder.bitrate
             metadata["duration"] = 0
             metadata["fileSize"] = 0
+            metadata["width"] = mixer.videoIO.encoder.width
+            metadata["height"] = mixer.videoIO.encoder.height
+            metadata["videodatarate"] = 4000 // mixer.videoIO.encoder.bitrate
+            metadata["framerate"] = 30 // mixer.videoIO.fps
+            metadata["videocodecid"] = FLVVideoCodec.avc.obsDescription
             metadata["encoder"] = "AVLive 1.0.0"
         }
         if let _: AVCaptureInput = mixer.audioIO.input {
@@ -665,7 +665,7 @@ extension RTMPStream: IEventDispatcher {
 extension RTMPStream: RTMPMuxerDelegate {
     // MARK: RTMPMuxerDelegate
     func metadata(_ metadata: ASObject) {
-        send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
+        send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
     }
 
     func sampleOutput(audio buffer: Data, withTimestamp: Double, muxer: RTMPMuxer) {
@@ -694,10 +694,11 @@ extension RTMPStream: RTMPMuxerDelegate {
             print("RTMPStream bailing? - encoder locked")
         }
         OSAtomicOr32Barrier(1, &mixer.videoIO.encoder.locked)
+        print("RTMPVideoMessage sampleOutput sending timestamp: \(UInt32(withTimestamp))")
         let length: Int = rtmpConnection.socket.doOutput(chunk: RTMPChunk(
-            type: videoWasSent ? .one : .zero,
+            type: .zero, // videoWasSent ? .one : .zero,
             streamId: type.chunkStreamId, // Wireshark reports this as the Chunk Stream ID, it used to match
-            message: RTMPVideoMessage(streamId: id, timestamp: UInt32(videoTimestamp), payload: buffer)
+            message: RTMPVideoMessage(streamId: id, timestamp: UInt32(withTimestamp), payload: buffer)
         ), locked: &mixer.videoIO.encoder.locked)
         videoWasSent = true
         OSAtomicAdd64(Int64(length), &info.byteCount)

@@ -342,8 +342,8 @@ final class H264Encoder: NSObject {
 
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue)
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_AutoLevel)
-//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(1200000) as CFTypeRef)
-              VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(4000000) as CFTypeRef)
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(1200000) as CFTypeRef)
+//              VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(4000000) as CFTypeRef)
 ////                NSArray *limit = @[@(_configuration.videoBitRate * 1.5/8), @(1)];
 
 //                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ExpectedFrameRate, NSInteger(30) as CFTypeRef)
@@ -416,14 +416,14 @@ final class H264Encoder: NSObject {
             os_signpost(.begin, log: SignpostLog.encoder, name: "encodeFrame")
         }
 
-        print("VTCompressionSessionEncodeFrame.pts: \(CMTimeGetSeconds(p))")
-        print("VTCompressionSessionEncodeFrame.dts: \(CMTimeGetSeconds(d))")
+//        print("VTCompressionSessionEncodeFrame.pts: \(CMTimeGetSeconds(p))")
+//        print("VTCompressionSessionEncodeFrame.dts: \(CMTimeGetSeconds(d))")
 
         if session.numberOfPendingFrames.intValue > 0 {
             print("pending number of frames is > 0: \(session.numberOfPendingFrames)")
         }
         
-        print(session.debugDescription)
+//        print(session.debugDescription)
 
         VTCompressionSessionEncodeFrame(
             session,
