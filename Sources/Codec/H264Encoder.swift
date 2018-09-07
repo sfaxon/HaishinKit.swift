@@ -1,6 +1,7 @@
 import AVFoundation
 import VideoToolbox
 import CoreFoundation
+import os.signpost
 
 protocol VideoEncoderDelegate: class {
     func didSetFormatDescription(video formatDescription: CMFormatDescription?)
@@ -28,7 +29,7 @@ final class H264Encoder: NSObject {
 
     #if os(iOS)
     static let defaultAttributes: [NSString: AnyObject] = [
-        kCVPixelBufferIOSurfacePropertiesKey: [:] as AnyObject,
+        kCVPixelBufferIOSurfacePropertiesKey: [:] as AnyObject
 //        kCVPixelBufferOpenGLESCompatibilityKey: kCFBooleanTrue
     ]
     #else
@@ -136,14 +137,14 @@ final class H264Encoder: NSObject {
     internal(set) var running: Bool = false
     private var supportedProperty: [AnyHashable: Any]? = nil {
         didSet {
-            guard logger.isEnabledFor(level: .info) else {
-                return
-            }
+//            guard logger.isEnabledFor(level: .info) else {
+//                return
+//            }
             var keys: [String] = []
             for (key, _) in supportedProperty ?? [:] {
                 keys.append(key.description)
             }
-            logger.info(keys.joined(separator: ", "))
+//            logger.info(keys.joined(separator: ", "))
         }
     }
     private(set) var status: OSStatus = noErr
@@ -223,6 +224,7 @@ final class H264Encoder: NSObject {
         status: OSStatus,
         infoFlags: VTEncodeInfoFlags,
         sampleBuffer: CMSampleBuffer?) in
+        os_signpost(.begin, log: SignpostLog.encoder, name: "callback")
         if status != noErr {
             print("H264Encoder.callabck bailing because status was error: \(status)")
             return
@@ -235,10 +237,33 @@ final class H264Encoder: NSObject {
             print("H264Encoder.callback bailing because sampleBuffer was nil")
             return
         }
+        
+//        var newTiming = [CMSampleTimingInfo](repeating: CMSampleTimingInfo(duration: sampleBuffer.duration,
+//                                                                           presentationTimeStamp: sampleBuffer.presentationTimeStamp,
+//                                                                           decodeTimeStamp: sampleBuffer.presentationTimeStamp),
+//                                             count: sampleBuffer.sampleTimingInfo.count)
+
+//        for i in 0..<sampleBuffer.sampleTimingInfo.count {
+//            newTiming[i].decodeTimeStamp = decodeTimeStamp
+//            newTiming[i].presentationTimeStamp = presentationTimeStamp
+//            newTiming[i].duration = CMTime(seconds: delta / 1000, preferredTimescale: 1000000)
+//        }
+
+//        var out: CMSampleBuffer?
+//        CMSampleBufferCreateCopyWithNewTiming(nil, sampleBuffer, newTiming.count, &newTiming, &out)
+        
+        
+        print("callback sampleBuffer.pts: \(sampleBuffer.presentationTimeStamp.seconds)")
+        print("callback sampleBuffer.dts: \(sampleBuffer.decodeTimeStamp.seconds)")
+        print("callback sampleBuffer.duration: \(sampleBuffer.duration.seconds)")
+        // dumps ALL the details of the frame
+//        print("callback CMShow(sampleBuffer):")
+//        CFShow(sampleBuffer)
+
         let encoder: H264Encoder = Unmanaged<H264Encoder>.fromOpaque(refcon).takeUnretainedValue()
         encoder.formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer)
         encoder.delegate?.sampleOutput(video: sampleBuffer)
-//        CVPixelBufferUnlockBaseAddress(sampleBuffer as! CVBuffer, [])
+        os_signpost(.end, log: SignpostLog.encoder, name: "callback")
     }
 
     private var encoderSpec: CFDictionary {
@@ -266,7 +291,7 @@ final class H264Encoder: NSObject {
                     Unmanaged.passUnretained(self).toOpaque(),
                     &_session
                     ) == noErr else {
-                    logger.warn("create a VTCompressionSessionCreate")
+//                    logger.warn("create a VTCompressionSessionCreate")
                     return nil
                 }
                 invalidateSession = false
@@ -305,24 +330,46 @@ final class H264Encoder: NSObject {
 //                    print("key: \(key), value: \(String(describing: result))")
 //                }
 
+//                kVTCompressionPropertyKey_PixelTransferProperties: [
+            ////                "ScalingMode": scalingMode
+                ////            ] as NSObject
+
+                let pixelTransferProperties: [CFString: CFString] = [kVTPixelTransferPropertyKey_ScalingMode: kVTScalingMode_Trim]
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_PixelTransferProperties, pixelTransferProperties as NSObject)
+
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, NSInteger(2) as CFTypeRef)
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_MaxKeyFrameInterval, NSInteger(60) as CFTypeRef)
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ExpectedFrameRate, NSInteger(30) as CFTypeRef)
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse)
+
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue)
                 VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_AutoLevel)
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(1200000) as CFTypeRef)
-//                NSArray *limit = @[@(_configuration.videoBitRate * 1.5/8), @(1)];
-                let limit: NSArray = NSArray(array: [NSInteger(468750), NSNumber(floatLiteral: 1.5)])
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_DataRateLimits, limit as CFArray)
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(1200000) as CFTypeRef)
+              VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AverageBitRate, NSInteger(4000000) as CFTypeRef)
+////                NSArray *limit = @[@(_configuration.videoBitRate * 1.5/8), @(1)];
 
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ColorPrimaries, kCVImageBufferColorPrimaries_ITU_R_709_2)
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_TransferFunction, kCVImageBufferTransferFunction_ITU_R_709_2)
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_YCbCrMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2)
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ExpectedFrameRate, NSInteger(30) as CFTypeRef)
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse)
+//                let limit: NSArray = NSArray(array: [NSInteger(468750), NSInteger(1)])
+                var cpb_size = Int(468750)
+                var max_bitrate_window = Float(1.5)
+                let cf_cpb_size = CFNumberCreate(kCFAllocatorDefault, CFNumberType.intType, &cpb_size)
+                let cf_max_bitrate_window = CFNumberCreate(kCFAllocatorDefault, CFNumberType.floatType, &max_bitrate_window)
 
-                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_VideoEncoderPixelBufferAttributes, pixelBufferPoolAttributes as CFDictionary)
+                var arrayCallback = kCFTypeArrayCallBacks
+                let rateControl = CFArrayCreateMutable(kCFAllocatorDefault, 2, &arrayCallback)
 
-                //VTSessionSetProperty(_session!, kVTCompressionPropertyKey_H264EntropyMode, kVTH264EntropyMode_CABAC)
+                CFArrayAppendValue(rateControl, unsafeBitCast(cf_cpb_size, to: UnsafeRawPointer.self))
+                CFArrayAppendValue(rateControl, unsafeBitCast(cf_max_bitrate_window, to: UnsafeRawPointer.self))
+
+                // setting DataRateLimits causes the DTS to be invalid
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_DataRateLimits, rateControl)
+
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_ColorPrimaries, kCVImageBufferColorPrimaries_ITU_R_709_2)
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_TransferFunction, kCVImageBufferTransferFunction_ITU_R_709_2)
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_YCbCrMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2)
+
+//                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_VideoEncoderPixelBufferAttributes, pixelBufferPoolAttributes as CFDictionary)
+
+                VTSessionSetProperty(_session!, kVTCompressionPropertyKey_H264EntropyMode, kVTH264EntropyMode_CABAC)
 
                 VTCompressionSessionPrepareToEncodeFrames(_session!)
             }
@@ -339,11 +386,12 @@ final class H264Encoder: NSObject {
 
     func encodeImageBuffer(_ imageBuffer: CVImageBuffer, presentationTimeStamp: CMTime, duration: CMTime) {
         guard running else {
-            print("H264Encoder bailing because not running")
+//            print("H264Encoder bailing because not running")
             return
         }
         guard locked == 0 else {
             print("H264Encoder bailing because locked")
+            self.frameCount += 1
             return
         }
         if invalidateSession {
@@ -354,7 +402,7 @@ final class H264Encoder: NSObject {
             return
         }
 
-        let d = CMTime(value: 1, timescale: 30)
+        let d = CMTime(value: 100, timescale: 3000)
         let p = CMTimeMultiply(d, Int32(self.frameCount))
 
         var x = imageBuffer
@@ -363,15 +411,19 @@ final class H264Encoder: NSObject {
         var frameProperties: [NSString: Any] = [:]
         if self.frameCount % 60 == 0 {
             frameProperties[kVTEncodeFrameOptionKey_ForceKeyFrame] = kCFBooleanTrue
+            os_signpost(.begin, log: SignpostLog.encoder, name: "encodeFrame", "keyframe")
+        } else {
+            os_signpost(.begin, log: SignpostLog.encoder, name: "encodeFrame")
         }
 
         print("VTCompressionSessionEncodeFrame.pts: \(CMTimeGetSeconds(p))")
         print("VTCompressionSessionEncodeFrame.dts: \(CMTimeGetSeconds(d))")
 
-
         if session.numberOfPendingFrames.intValue > 0 {
             print("pending number of frames is > 0: \(session.numberOfPendingFrames)")
         }
+        
+        print(session.debugDescription)
 
         VTCompressionSessionEncodeFrame(
             session,
@@ -386,6 +438,7 @@ final class H264Encoder: NSObject {
         if flags.contains(VTEncodeInfoFlags.frameDropped) {
             print("VTCompressionSessionEncodeFrame reported bailing because it dropped a frame")
         }
+        os_signpost(.end, log: SignpostLog.encoder, name: "encodeFrame")
 //        VTCompressionSessionEncodeFrame(<#T##session: VTCompressionSession##VTCompressionSession#>,
 //                                        <#T##imageBuffer: CVImageBuffer##CVImageBuffer#>,
 //                                        <#T##presentationTimeStamp: CMTime##CMTime#>,

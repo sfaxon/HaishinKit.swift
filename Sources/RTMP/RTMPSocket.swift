@@ -70,7 +70,11 @@ final class RTMPSocket: NetSocket, RTMPSocketCompatible {
         }
     }
 
-    private var events: [Event] = []
+    private var events: [Event] = [] {
+        didSet {
+            print("setting RTMPSocket Events")
+        }
+    }
     private var handshake: RTMPHandshake = RTMPHandshake()
 
     @discardableResult
@@ -80,9 +84,9 @@ final class RTMPSocket: NetSocket, RTMPSocketCompatible {
             doOutput(data: chunks[i])
         }
         doOutput(data: chunks.last!, locked: locked)
-        if logger.isEnabledFor(level: .trace) {
-            logger.trace(chunk.description)
-        }
+//        if logger.isEnabledFor(level: .trace) {
+//            logger.trace(chunk.description)
+//        }
         return chunk.message!.length
     }
 
@@ -139,7 +143,7 @@ final class RTMPSocket: NetSocket, RTMPSocketCompatible {
     override func deinitConnection(isDisconnected: Bool) {
         if isDisconnected {
             let data: ASObject = (readyState == .handshakeDone) ?
-                RTMPConnection.Code.connectClosed.data("") : RTMPConnection.Code.connectFailed.data("")
+                RTMPConnection.Code.connectClosed.data("RTMPSocket.deinitConnection()") : RTMPConnection.Code.connectFailed.data("")
             events.append(Event(type: Event.RTMP_STATUS, bubbles: false, data: data))
         }
         readyState = .closing
@@ -149,6 +153,6 @@ final class RTMPSocket: NetSocket, RTMPSocketCompatible {
     override func didTimeout() {
         deinitConnection(isDisconnected: false)
         delegate?.dispatch(Event.IO_ERROR, bubbles: false, data: nil)
-        logger.warn("connection timedout")
+//        logger.warn("connection timedout")
     }
 }

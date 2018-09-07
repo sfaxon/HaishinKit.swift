@@ -1,16 +1,16 @@
 import UIKit
 import AVFoundation
-import Logboard
+//import Logboard
 import HaishinKit
 
-let logger: Logboard = Logboard.with("com.haishinkit.Exsample.iOS")
+//let logger: Logboard = Logboard.with("com.haishinkit.Exsample.iOS")
 
 @UIApplicationMain
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]? = nil) -> Bool {
-        Logboard.with(HaishinKitIdentifier).level = .warn
+//        Logboard.with(HaishinKitIdentifier).level = .warn
         let session: AVAudioSession = AVAudioSession.sharedInstance()
         do {
             try session.setPreferredSampleRate(44_100)

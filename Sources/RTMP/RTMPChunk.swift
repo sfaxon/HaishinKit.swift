@@ -149,7 +149,8 @@ final class RTMPChunk {
             }
 
             guard let message: RTMPMessage = RTMPMessage.create(newValue[pos + 6]) else {
-                logger.error(newValue.description)
+                fatalError(newValue.description)
+//                logger.error(newValue.description)
                 return
             }
 
@@ -247,7 +248,7 @@ final class RTMPChunk {
             self.message?.length = message.length
             self.message?.payload = Data(try buffer.readBytes(message.length))
         } catch {
-            logger.warn("\(buffer)")
+//            logger.warn("\(buffer)")
         }
 
         return headerSize + message.length

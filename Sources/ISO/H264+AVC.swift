@@ -24,7 +24,8 @@ struct AVCFormatStream {
                 result.append(contentsOf: [0x00, 0x00, 0x00, 0x01])
                 result.append(try buffer.readBytes(length))
             } catch {
-                logger.error("\(buffer)")
+                fatalError("\(buffer)")
+//                logger.error("\(buffer)")
             }
         }
         return result
@@ -142,7 +143,8 @@ extension AVCConfigurationRecord: DataConvertible {
                     pictureParameterSets.append(try buffer.readBytes(length).bytes)
                 }
             } catch {
-                logger.error("\(buffer)")
+                fatalError()
+//                logger.error("\(buffer)")
             }
         }
     }

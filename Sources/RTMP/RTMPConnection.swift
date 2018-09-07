@@ -354,7 +354,8 @@ open class RTMPConnection: EventDispatcher {
             }
         case .connectClosed?:
             if let description: String = data["description"] as? String {
-                logger.warn(description)
+                print("RTMPConnection: connectClosed: \(description)")
+//                logger.warn(description)
             }
             close(isDisconnected: true)
         default:
@@ -484,9 +485,9 @@ extension RTMPConnection: RTMPSocketDelegate {
         }
 
         if let message: RTMPMessage = chunk.message, chunk.ready {
-            if logger.isEnabledFor(level: .trace) {
-                logger.trace(chunk.description)
-            }
+//            if logger.isEnabledFor(level: .trace) {
+//                logger.trace(chunk.description)
+//            }
             switch chunk.type {
             case .zero:
                 streamsmap[chunk.streamId] = message.streamId

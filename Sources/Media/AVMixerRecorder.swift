@@ -20,7 +20,7 @@ open class AVMixerRecorder: NSObject {
             AVNumberOfChannelsKey: 0
         ],
         .video: [
-            AVVideoCodecKey: AVVideoCodecH264,
+            AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoHeightKey: 0,
             AVVideoWidthKey: 0
         ]
@@ -269,10 +269,10 @@ extension DefaultAVMixerRecorderDelegate: AVMixerRecorderDelegate {
                 fileComponent = fileName + dateFormatter.string(from: Date())
             }
             let url: URL = moviesDirectory.appendingPathComponent((fileComponent ?? UUID().uuidString) + ".mp4")
-            logger.info("\(url)")
+//            logger.info("\(url)")
             return try AVAssetWriter(outputURL: url, fileType: .mp4)
         } catch {
-            logger.warn("create an AVAssetWriter")
+//            logger.warn("create an AVAssetWriter")
         }
         return nil
     }

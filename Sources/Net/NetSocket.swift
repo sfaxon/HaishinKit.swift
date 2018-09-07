@@ -70,7 +70,8 @@ open class NetSocket: NSObject {
                     self.doOutputProcess(fileHandle.readData(ofLength: remain))
                 }
             } catch let error as NSError {
-                logger.error("\(error)")
+                fatalError(error.localizedDescription)
+//                logger.error("\(error)")
             }
         }
     }
@@ -105,7 +106,7 @@ open class NetSocket: NSObject {
             self.deinitConnection(isDisconnected: isDisconnected)
             self.runloop = nil
             CFRunLoopStop(runloop.getCFRunLoop())
-            logger.trace("isDisconnected: \(isDisconnected)")
+//            logger.trace("isDisconnected: \(isDisconnected)")
         }
     }
 
@@ -220,7 +221,13 @@ extension NetSocket: StreamDelegate {
             close(isDisconnected: true)
         // 16 = 1 << 4
         case .endEncountered:
-            print("sombody things the end is nigh")
+            if aStream == inputStream {
+                print("inputStream .endEncountered")
+            } else if aStream == outputStream {
+                print("outputStream .endEncountered")
+            } else {
+                print("I guess nobody ended the stream??")
+            }
             close(isDisconnected: true)
         default:
             break

@@ -42,9 +42,9 @@ final class H264Decoder {
     private var minimumGroupOfPictures: Int = 12
     private(set) var status: OSStatus = noErr {
         didSet {
-            if status != noErr {
-                logger.warn("\(self.status)")
-            }
+//            if status != noErr {
+//                logger.warn("\(self.status)")
+//            }
         }
     }
     private var invalidateSession: Bool = true

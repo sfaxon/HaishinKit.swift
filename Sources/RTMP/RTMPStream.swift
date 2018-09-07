@@ -1,4 +1,5 @@
 import AVFoundation
+import os.signpost
 /**
  flash.net.NetStreamInfo for Swift
  */
@@ -272,7 +273,7 @@ open class RTMPStream: NetStream {
                 videoWasSent = false
                 audioWasSent = false
             case .publishing:
-                send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
+                send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
                 mixer.audioIO.encoder.startRunning()
                 mixer.videoIO.encoder.startRunning()
                 sampler?.startRunning()
@@ -664,7 +665,7 @@ extension RTMPStream: IEventDispatcher {
 extension RTMPStream: RTMPMuxerDelegate {
     // MARK: RTMPMuxerDelegate
     func metadata(_ metadata: ASObject) {
-        send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
+        send(handlerName: "@setDataFrame", arguments: "onMetaData", arrayMetaData())
     }
 
     func sampleOutput(audio buffer: Data, withTimestamp: Double, muxer: RTMPMuxer) {
@@ -683,6 +684,7 @@ extension RTMPStream: RTMPMuxerDelegate {
     }
 
     func sampleOutput(video buffer: Data, withTimestamp: Double, muxer: RTMPMuxer) {
+        os_signpost(.begin, log: SignpostLog.stream, name: "sampleOutput")
         guard readyState == .publishing else {
             print("RTMPStream bailing because not publishing")
             return
@@ -703,5 +705,6 @@ extension RTMPStream: RTMPMuxerDelegate {
 //        print("videoTimestamp: \(videoTimestamp)")
         print("RTMPStream  frameCount: \(frameCount)")
         frameCount += 1
+        os_signpost(.end, log: SignpostLog.stream, name: "sampleOutput")
     }
 }

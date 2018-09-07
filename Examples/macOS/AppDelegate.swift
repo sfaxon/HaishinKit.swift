@@ -1,5 +1,5 @@
 import Cocoa
-import Logboard
+//import Logboard
 import HaishinKit
 
 @NSApplicationMain

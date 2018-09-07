@@ -1,7 +1,7 @@
 import HaishinKit
 import VideoToolbox
 import ReplayKit
-import Logboard
+//import Logboard
 
 @available(iOS 10.0, *)
 open class SampleHandler: RPBroadcastSampleHandler {
@@ -23,7 +23,7 @@ open class SampleHandler: RPBroadcastSampleHandler {
         logger.level = .debug
         logger.appender = socket
         */
-        
+
         print("broadcastStarted")
         super.broadcastStarted(withSetupInfo: setupInfo)
         guard

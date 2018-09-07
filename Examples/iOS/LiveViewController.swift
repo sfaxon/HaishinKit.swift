@@ -59,7 +59,7 @@ final class LiveViewController: UIViewController {
             "profileLevel": kVTProfileLevel_H264_Main_AutoLevel,
             "maxKeyFrameIntervalDuration": 3,
             //
-            "bitrate": 1200000 // 300 * 1024
+            "bitrate": 4000000 // 300 * 1024
         ]
         rtmpStream.audioSettings = [
             "muted": true,
@@ -73,20 +73,20 @@ final class LiveViewController: UIViewController {
     }
 
     override func viewWillAppear(_ animated: Bool) {
-        logger.info("viewWillAppear")
+//        logger.info("viewWillAppear")
         super.viewWillAppear(animated)
         rtmpStream.attachAudio(AVCaptureDevice.default(for: .audio)) { error in
-            logger.warn(error.description)
+//            logger.warn(error.description)
         }
         rtmpStream.attachCamera(DeviceUtil.device(withPosition: currentPosition)) { error in
-            logger.warn(error.description)
+//            logger.warn(error.description)
         }
         rtmpStream.addObserver(self, forKeyPath: "currentFPS", options: .new, context: nil)
         lfView?.attachStream(rtmpStream)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
-        logger.info("viewWillDisappear")
+//        logger.info("viewWillDisappear")
         super.viewWillDisappear(animated)
         rtmpStream.removeObserver(self, forKeyPath: "currentFPS")
         rtmpStream.close()
@@ -94,10 +94,10 @@ final class LiveViewController: UIViewController {
     }
 
     @IBAction func rotateCamera(_ sender: UIButton) {
-        logger.info("rotateCamera")
+//        logger.info("rotateCamera")
         let position: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
         rtmpStream.attachCamera(DeviceUtil.device(withPosition: position)) { error in
-            logger.warn(error.description)
+//            logger.warn(error.description)
         }
         currentPosition = position
     }

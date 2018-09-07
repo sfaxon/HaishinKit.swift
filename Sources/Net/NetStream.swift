@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreMedia
 
 protocol NetStreamDrawable: class {
 #if os(iOS) || os(macOS)

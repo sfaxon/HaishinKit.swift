@@ -17,7 +17,7 @@ extension CMVideoFormatDescription {
             &formatDescription
         )
         guard status == noErr else {
-            logger.warn("\(status)")
+//            logger.warn("\(status)")
             return nil
         }
         return formatDescription

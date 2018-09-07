@@ -124,18 +124,19 @@ final class RTMPTSocket: NSObject, RTMPSocketCompatible {
 
         lastResponse = Date()
 
-        if logger.isEnabledFor(level: .trace) {
-            logger.trace("\(String(describing: data)): \(String(describing: response)): \(String(describing: error))")
-        }
+//        if logger.isEnabledFor(level: .trace) {
+//            logger.trace("\(String(describing: data)): \(String(describing: response)): \(String(describing: error))")
+//        }
 
         if let error: Error = error {
-            logger.error("\(error)")
+            print("error: \(error)")
+//            logger.error("\(error)")
 
             if let lastRequestPathComponent: String = self.lastRequestPathComponent,
                let lastRequestData: Data = self.lastRequestData, !isRetryingRequest {
-                if logger.isEnabledFor(level: .trace) {
-                    logger.trace("Will retry request for path=\(lastRequestPathComponent)")
-                }
+//                if logger.isEnabledFor(level: .trace) {
+//                    logger.trace("Will retry request for path=\(lastRequestPathComponent)")
+//                }
                 outputQueue.sync {
                     isRetryingRequest = true
                     doRequest(lastRequestPathComponent, lastRequestData, listen)
@@ -197,46 +198,48 @@ final class RTMPTSocket: NSObject, RTMPSocketCompatible {
 
     private func didIdent2(data: Data?, response: URLResponse?, error: Error?) {
         if let error: Error = error {
-            logger.error("\(error)")
+            print("error: \(error)")
+//            logger.error("\(error)")
         }
         doRequest("/open/1", Data([0x00]), didOpen)
-        if logger.isEnabledFor(level: .trace) {
-            logger.trace("\(String(describing: data?.bytes)): \(String(describing: response))")
-        }
+//        if logger.isEnabledFor(level: .trace) {
+//            logger.trace("\(String(describing: data?.bytes)): \(String(describing: response))")
+//        }
     }
 
     private func didOpen(data: Data?, response: URLResponse?, error: Error?) {
         if let error: Error = error {
-            logger.error("\(error)")
+            print("error: \(error)")
+//            logger.error("\(error)")
         }
         guard let data: Data = data else {
             return
         }
         connectionID = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
         doRequest("/idle/\(connectionID!)/0", Data([0x00]), didIdle0)
-        if logger.isEnabledFor(level: .trace) {
-            logger.trace("\(data.bytes): \(String(describing: response))")
-        }
+//        if logger.isEnabledFor(level: .trace) {
+//            logger.trace("\(data.bytes): \(String(describing: response))")
+//        }
     }
 
     private func didIdle0(data: Data?, response: URLResponse?, error: Error?) {
         if let error: Error = error {
-            logger.error("\(error)")
+            print("error: \(error)")
         }
         connected = true
-        if logger.isEnabledFor(level: .trace) {
-            logger.trace("\(String(describing: data?.bytes)): \(String(describing: response))")
-        }
+//        if logger.isEnabledFor(level: .trace) {
+//            logger.trace("\(String(describing: data?.bytes)): \(String(describing: response))")
+//        }
     }
 
     private func didClose(data: Data?, response: URLResponse?, error: Error?) {
         if let error: Error = error {
-            logger.error("\(error)")
+            print("error: \(error)")
         }
         connected = false
-        if logger.isEnabledFor(level: .trace) {
-            logger.trace("\(String(describing: data?.bytes)): \(String(describing: response))")
-        }
+//        if logger.isEnabledFor(level: .trace) {
+//            logger.trace("\(String(describing: data?.bytes)): \(String(describing: response))")
+//        }
     }
 
     private func idle() {
@@ -278,9 +281,9 @@ final class RTMPTSocket: NSObject, RTMPSocketCompatible {
         request = URLRequest(url: baseURL.appendingPathComponent(pathComponent))
         request.httpMethod = "POST"
         session.uploadTask(with: request, from: data, completionHandler: completionHandler).resume()
-        if logger.isEnabledFor(level: .trace) {
-            logger.trace("\(String(describing: self.request))")
-        }
+//        if logger.isEnabledFor(level: .trace) {
+//            logger.trace("\(String(describing: self.request))")
+//        }
     }
 }
 
